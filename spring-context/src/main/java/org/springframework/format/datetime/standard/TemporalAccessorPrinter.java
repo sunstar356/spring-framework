@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.Locale;
 
-import org.springframework.core.UsesJava8;
 import org.springframework.format.Printer;
 
 /**
@@ -32,7 +31,6 @@ import org.springframework.format.Printer;
  * @see DateTimeContextHolder#getFormatter
  * @see java.time.format.DateTimeFormatter#format(java.time.temporal.TemporalAccessor)
  */
-@UsesJava8
 public final class TemporalAccessorPrinter implements Printer<TemporalAccessor> {
 
 	private final DateTimeFormatter formatter;

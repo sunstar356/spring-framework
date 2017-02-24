@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2013 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,9 +25,10 @@ import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 import org.springframework.web.socket.sockjs.SockJsService;
+import org.springframework.web.socket.sockjs.frame.SockJsMessageCodec;
 import org.springframework.web.socket.sockjs.transport.TransportHandler;
-import org.springframework.web.socket.sockjs.transport.handler.DefaultSockJsService;
 import org.springframework.web.socket.sockjs.transport.TransportHandlingSockJsService;
+import org.springframework.web.socket.sockjs.transport.handler.DefaultSockJsService;
 
 /**
  * A helper class for configuring SockJS fallback options, typically used indirectly, in
@@ -55,11 +56,17 @@ public class SockJsServiceRegistration {
 
 	private Boolean webSocketEnabled;
 
-	private final List<TransportHandler> transportHandlers = new ArrayList<TransportHandler>();
+	private final List<TransportHandler> transportHandlers = new ArrayList<>();
 
-	private final List<TransportHandler> transportHandlerOverrides = new ArrayList<TransportHandler>();
+	private final List<TransportHandler> transportHandlerOverrides = new ArrayList<>();
 
-	private final List<HandshakeInterceptor> interceptors = new ArrayList<HandshakeInterceptor>();
+	private final List<HandshakeInterceptor> interceptors = new ArrayList<>();
+
+	private final List<String> allowedOrigins = new ArrayList<>();
+
+	private Boolean suppressCors;
+
+	private SockJsMessageCodec messageCodec;
 
 
 	public SockJsServiceRegistration(TaskScheduler defaultTaskScheduler) {
@@ -73,16 +80,20 @@ public class SockJsServiceRegistration {
 	}
 
 	/**
-	 * Transports which don't support cross-domain communication natively (e.g.
-	 * "eventsource", "htmlfile") rely on serving a simple page (using the
-	 * "foreign" domain) from an invisible iframe. Code run from this iframe
-	 * doesn't need to worry about cross-domain issues since it is running from
-	 * a domain local to the SockJS server. The iframe does need to load the
-	 * SockJS javascript client library and this option allows configuring its url.
-	 * See the reference documentation for more details on this.
-	 *
+	 * Transports with no native cross-domain communication (e.g. "eventsource",
+	 * "htmlfile") must get a simple page from the "foreign" domain in an invisible
+	 * iframe so that code in the iframe can run from  a domain local to the SockJS
+	 * server. Since the iframe needs to load the SockJS javascript client library,
+	 * this property allows specifying where to load it from.
 	 * <p>By default this is set to point to
-	 * "https://d1fxtkz8shb9d2.cloudfront.net/sockjs-0.3.4.min.js".
+	 * "https://cdn.jsdelivr.net/sockjs/0.3.4/sockjs.min.js". However it can
+	 * also be set to point to a URL served by the application.
+	 * <p>Note that it's possible to specify a relative URL in which case the URL
+	 * must be relative to the iframe URL. For example assuming a SockJS endpoint
+	 * mapped to "/sockjs", and resulting iframe URL "/sockjs/iframe.html", then the
+	 * the relative URL must start with "../../" to traverse up to the location
+	 * above the SockJS mapping. In case of a prefix-based Servlet mapping one more
+	 * traversal may be needed.
 	 */
 	public SockJsServiceRegistration setClientLibraryUrl(String clientLibraryUrl) {
 		this.clientLibraryUrl = clientLibraryUrl;
@@ -188,9 +199,44 @@ public class SockJsServiceRegistration {
 	}
 
 	public SockJsServiceRegistration setInterceptors(HandshakeInterceptor... interceptors) {
+		this.interceptors.clear();
 		if (!ObjectUtils.isEmpty(interceptors)) {
 			this.interceptors.addAll(Arrays.asList(interceptors));
 		}
+		return this;
+	}
+
+	/**
+	 * @since 4.1.2
+	 */
+	protected SockJsServiceRegistration setAllowedOrigins(String... allowedOrigins) {
+		this.allowedOrigins.clear();
+		if (!ObjectUtils.isEmpty(allowedOrigins)) {
+			this.allowedOrigins.addAll(Arrays.asList(allowedOrigins));
+		}
+		return this;
+	}
+
+	/**
+	 * This option can be used to disable automatic addition of CORS headers for
+	 * SockJS requests.
+	 * <p>The default value is "false".
+	 * @since 4.1.2
+	 */
+	public SockJsServiceRegistration setSupressCors(boolean suppressCors) {
+		this.suppressCors = suppressCors;
+		return this;
+	}
+
+	/**
+	 * The codec to use for encoding and decoding SockJS messages.
+	 * <p>By default {@code Jackson2SockJsMessageCodec} is used requiring the
+	 * Jackson library to be present on the classpath.
+	 * @param codec the codec to use.
+	 * @since 4.1
+	 */
+	public SockJsServiceRegistration setMessageCodec(SockJsMessageCodec codec) {
+		this.messageCodec = codec;
 		return this;
 	}
 
@@ -217,6 +263,15 @@ public class SockJsServiceRegistration {
 		}
 		if (this.webSocketEnabled != null) {
 			service.setWebSocketEnabled(this.webSocketEnabled);
+		}
+		if (this.allowedOrigins != null) {
+			service.setAllowedOrigins(this.allowedOrigins);
+		}
+		if (this.suppressCors != null) {
+			service.setSuppressCors(this.suppressCors);
+		}
+		if (this.messageCodec != null) {
+			service.setMessageCodec(this.messageCodec);
 		}
 		return service;
 	}

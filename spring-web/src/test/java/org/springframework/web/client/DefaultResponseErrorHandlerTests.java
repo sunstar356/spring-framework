@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.junit.Before;
 import org.junit.Test;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -104,7 +105,7 @@ public class DefaultResponseErrorHandlerTests {
 
 	// SPR-9406
 
-	@Test(expected=UnknownHttpStatusCodeException.class)
+	@Test(expected = UnknownHttpStatusCodeException.class)
 	public void unknownStatusCode() throws Exception {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.TEXT_PLAIN);

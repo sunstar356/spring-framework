@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ public class ProxyProcessorSupport extends ProxyConfig implements Ordered, BeanC
 	 * Set the ordering which will apply to this class's implementation
 	 * of Ordered, used when applying multiple processors.
 	 * <p>Default value is {@code Integer.MAX_VALUE}, meaning that it's non-ordered.
-	 * @param order ordering value
+	 * @param order the ordering value
 	 */
 	public void setOrder(int order) {
 		this.order = order;
@@ -64,9 +64,9 @@ public class ProxyProcessorSupport extends ProxyConfig implements Ordered, BeanC
 
 	/**
 	 * Set the ClassLoader to generate the proxy class in.
-	 * <p>Default is the bean ClassLoader, i.e. the ClassLoader used by the
-	 * containing BeanFactory for loading all bean classes. This can be
-	 * overridden here for specific proxies.
+	 * <p>Default is the bean ClassLoader, i.e. the ClassLoader used by the containing
+	 * {@link org.springframework.beans.factory.BeanFactory} for loading all bean classes.
+	 * This can be overridden here for specific proxies.
 	 */
 	public void setProxyClassLoader(ClassLoader classLoader) {
 		this.proxyClassLoader = classLoader;
@@ -89,7 +89,7 @@ public class ProxyProcessorSupport extends ProxyConfig implements Ordered, BeanC
 
 
 	/**
-	 * Check the interfaces on the given bean class and apply them to the ProxyFactory,
+	 * Check the interfaces on the given bean class and apply them to the {@link ProxyFactory},
 	 * if appropriate.
 	 * <p>Calls {@link #isConfigurationCallbackInterface} and {@link #isInternalLanguageInterface}
 	 * to filter for reasonable proxy interfaces, falling back to a target-class proxy otherwise.
@@ -126,7 +126,7 @@ public class ProxyProcessorSupport extends ProxyConfig implements Ordered, BeanC
 	 * @return whether the given interface is just a container callback
 	 */
 	protected boolean isConfigurationCallbackInterface(Class<?> ifc) {
-		return (ifc.equals(InitializingBean.class) || ifc.equals(DisposableBean.class) ||
+		return (InitializingBean.class == ifc || DisposableBean.class == ifc ||
 				ObjectUtils.containsElement(ifc.getInterfaces(), Aware.class));
 	}
 
@@ -139,7 +139,9 @@ public class ProxyProcessorSupport extends ProxyConfig implements Ordered, BeanC
 	 * @return whether the given interface is an internal language interface
 	 */
 	protected boolean isInternalLanguageInterface(Class<?> ifc) {
-		return ifc.getName().equals("groovy.lang.GroovyObject");
+		return (ifc.getName().equals("groovy.lang.GroovyObject") ||
+				ifc.getName().endsWith(".cglib.proxy.Factory") ||
+				ifc.getName().endsWith(".bytebuddy.MockAccess"));
 	}
 
 }

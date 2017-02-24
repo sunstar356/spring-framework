@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2002-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 
 import org.junit.Test;
+
 import org.springframework.util.ReflectionUtils;
 
 import static org.junit.Assert.*;
@@ -41,6 +42,7 @@ import static org.junit.Assert.*;
  * @author Juergen Hoeller
  * @author Chris Beams
  */
+@SuppressWarnings("rawtypes")
 public class BridgeMethodResolverTests {
 
 	private static TypeVariable<?> findTypeVariable(Class<?> clazz, String name) {
@@ -93,7 +95,7 @@ public class BridgeMethodResolverTests {
 		Method bridgedMethod = BridgeMethodResolver.findBridgedMethod(bridgeMethod);
 		assertFalse(bridgedMethod.isBridge());
 		assertEquals("add", bridgedMethod.getName());
-		assertEquals(1, bridgedMethod.getParameterTypes().length);
+		assertEquals(1, bridgedMethod.getParameterCount());
 		assertEquals(Date.class, bridgedMethod.getParameterTypes()[0]);
 	}
 

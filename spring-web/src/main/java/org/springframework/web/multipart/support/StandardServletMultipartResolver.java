@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2012 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,8 +42,27 @@ import org.springframework.web.multipart.MultipartResolver;
  *
  * @author Juergen Hoeller
  * @since 3.1
+ * @see #setResolveLazily
+ * @see HttpServletRequest#getParts()
+ * @see org.springframework.web.multipart.commons.CommonsMultipartResolver
  */
 public class StandardServletMultipartResolver implements MultipartResolver {
+
+	private boolean resolveLazily = false;
+
+
+	/**
+	 * Set whether to resolve the multipart request lazily at the time of
+	 * file or parameter access.
+	 * <p>Default is "false", resolving the multipart elements immediately, throwing
+	 * corresponding exceptions at the time of the {@link #resolveMultipart} call.
+	 * Switch this to "true" for lazy multipart parsing, throwing parse exceptions
+	 * once the application attempts to obtain multipart files or parameters.
+	 */
+	public void setResolveLazily(boolean resolveLazily) {
+		this.resolveLazily = resolveLazily;
+	}
+
 
 	@Override
 	public boolean isMultipart(HttpServletRequest request) {
@@ -57,7 +76,7 @@ public class StandardServletMultipartResolver implements MultipartResolver {
 
 	@Override
 	public MultipartHttpServletRequest resolveMultipart(HttpServletRequest request) throws MultipartException {
-		return new StandardMultipartHttpServletRequest(request);
+		return new StandardMultipartHttpServletRequest(request, this.resolveLazily);
 	}
 
 	@Override
@@ -71,7 +90,7 @@ public class StandardServletMultipartResolver implements MultipartResolver {
 				}
 			}
 		}
-		catch (Exception ex) {
+		catch (Throwable ex) {
 			LogFactory.getLog(getClass()).warn("Failed to perform cleanup of multipart items", ex);
 		}
 	}

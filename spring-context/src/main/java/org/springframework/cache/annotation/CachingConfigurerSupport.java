@@ -17,6 +17,7 @@
 package org.springframework.cache.annotation;
 
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.cache.interceptor.CacheResolver;
 import org.springframework.cache.interceptor.KeyGenerator;
 
@@ -42,6 +43,11 @@ public class CachingConfigurerSupport implements CachingConfigurer {
 
 	@Override
 	public CacheResolver cacheResolver() {
+		return null;
+	}
+
+	@Override
+	public CacheErrorHandler errorHandler() {
 		return null;
 	}
 

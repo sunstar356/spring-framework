@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2013 the original author or authors.
+ * Copyright 2002-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,9 +35,11 @@ import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.support.CallbackPreferringPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.transaction.support.SmartTransactionObject;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionSynchronizationUtils;
 import org.springframework.util.ReflectionUtils;
 
 /**
@@ -117,7 +119,7 @@ public class WebSphereUowTransactionManager extends JtaTransactionManager
 
 	/**
 	 * Set the WebSphere UOWManager to use as direct reference.
-	 * <p>Typically just used for test setups; in a J2EE environment,
+	 * <p>Typically just used for test setups; in a Java EE environment,
 	 * the UOWManager will always be fetched from JNDI.
 	 * @see #setUserTransactionName
 	 */
@@ -283,7 +285,7 @@ public class WebSphereUowTransactionManager extends JtaTransactionManager
 			if (debug) {
 				logger.debug("Invoking WebSphere UOW action: type=" + uowType + ", join=" + joinTx);
 			}
-			UOWActionAdapter<T> action = new UOWActionAdapter<T>(
+			UOWActionAdapter<T> action = new UOWActionAdapter<>(
 					definition, callback, (uowType == UOWManager.UOW_TYPE_GLOBAL_TRANSACTION), !joinTx, newSynch, debug);
 			this.uowManager.runUnderUOW(uowType, joinTx, action);
 			if (debug) {
@@ -308,7 +310,7 @@ public class WebSphereUowTransactionManager extends JtaTransactionManager
 	/**
 	 * Adapter that executes the given Spring transaction within the WebSphere UOWAction shape.
 	 */
-	private class UOWActionAdapter<T> implements UOWAction {
+	private class UOWActionAdapter<T> implements UOWAction, SmartTransactionObject {
 
 		private final TransactionDefinition definition;
 
@@ -372,6 +374,16 @@ public class WebSphereUowTransactionManager extends JtaTransactionManager
 				ReflectionUtils.rethrowRuntimeException(this.exception);
 			}
 			return this.result;
+		}
+
+		@Override
+		public boolean isRollbackOnly() {
+			return uowManager.getRollbackOnly();
+		}
+
+		@Override
+		public void flush() {
+			TransactionSynchronizationUtils.triggerFlush();
 		}
 	}
 

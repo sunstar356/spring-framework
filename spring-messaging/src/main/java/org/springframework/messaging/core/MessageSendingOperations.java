@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2013 the original author or authors.
+ * Copyright 2002-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,11 +24,10 @@ import org.springframework.messaging.MessagingException;
 /**
  * Operations for sending messages to a destination.
  *
- * @param <D> the type of destination to send messages to
- *
  * @author Mark Fisher
  * @author Rossen Stoyanchev
  * @since 4.0
+ * @param <D> the type of destination to send messages to
  */
 public interface MessageSendingOperations<D> {
 
@@ -66,7 +65,7 @@ public interface MessageSendingOperations<D> {
 	 * Convert the given Object to serialized form, possibly using a
 	 * {@link org.springframework.messaging.converter.MessageConverter},
 	 * wrap it as a message with the given headers and send it to
-	 * a default destination.
+	 * the given destination.
 	 * @param destination the target destination
 	 * @param payload the Object to use as payload
 	 * @param headers headers for the message to send

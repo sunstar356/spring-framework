@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2013 the original author or authors.
+ * Copyright 2002-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,20 +18,20 @@ package org.springframework.context.annotation;
 
 import java.util.Map;
 import javax.management.MBeanServer;
+import javax.naming.NamingException;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
-import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
+import org.springframework.jmx.MBeanServerNotFoundException;
 import org.springframework.jmx.export.annotation.AnnotationMBeanExporter;
 import org.springframework.jmx.support.RegistrationPolicy;
 import org.springframework.jmx.support.WebSphereMBeanServerFactoryBean;
-import org.springframework.jndi.JndiObjectFactoryBean;
-import org.springframework.util.Assert;
+import org.springframework.jndi.JndiLocatorDelegate;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
@@ -51,7 +51,7 @@ public class MBeanExportConfiguration implements ImportAware, EnvironmentAware, 
 
 	private static final String MBEAN_EXPORTER_BEAN_NAME = "mbeanExporter";
 
-	private AnnotationAttributes attributes;
+	private AnnotationAttributes enableMBeanExport;
 
 	private Environment environment;
 
@@ -61,9 +61,11 @@ public class MBeanExportConfiguration implements ImportAware, EnvironmentAware, 
 	@Override
 	public void setImportMetadata(AnnotationMetadata importMetadata) {
 		Map<String, Object> map = importMetadata.getAnnotationAttributes(EnableMBeanExport.class.getName());
-		this.attributes = AnnotationAttributes.fromMap(map);
-		Assert.notNull(this.attributes,
-				"@EnableMBeanExport is not present on importing class " + importMetadata.getClassName());
+		this.enableMBeanExport = AnnotationAttributes.fromMap(map);
+		if (this.enableMBeanExport == null) {
+			throw new IllegalArgumentException(
+					"@EnableMBeanExport is not present on importing class " + importMetadata.getClassName());
+		}
 	}
 
 	@Override
@@ -77,7 +79,7 @@ public class MBeanExportConfiguration implements ImportAware, EnvironmentAware, 
 	}
 
 
-	@Bean(name=MBEAN_EXPORTER_BEAN_NAME)
+	@Bean(name = MBEAN_EXPORTER_BEAN_NAME)
 	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 	public AnnotationMBeanExporter mbeanExporter() {
 		AnnotationMBeanExporter exporter = new AnnotationMBeanExporter();
@@ -88,7 +90,7 @@ public class MBeanExportConfiguration implements ImportAware, EnvironmentAware, 
 	}
 
 	private void setupDomain(AnnotationMBeanExporter exporter) {
-		String defaultDomain = this.attributes.getString("defaultDomain");
+		String defaultDomain = this.enableMBeanExport.getString("defaultDomain");
 		if (defaultDomain != null && this.environment != null) {
 			defaultDomain = this.environment.resolvePlaceholders(defaultDomain);
 		}
@@ -98,7 +100,7 @@ public class MBeanExportConfiguration implements ImportAware, EnvironmentAware, 
 	}
 
 	private void setupServer(AnnotationMBeanExporter exporter) {
-		String server = this.attributes.getString("server");
+		String server = this.enableMBeanExport.getString("server");
 		if (server != null && this.environment != null) {
 			server = this.environment.resolvePlaceholders(server);
 		}
@@ -114,26 +116,31 @@ public class MBeanExportConfiguration implements ImportAware, EnvironmentAware, 
 	}
 
 	private void setupRegistrationPolicy(AnnotationMBeanExporter exporter) {
-		RegistrationPolicy registrationPolicy = this.attributes.getEnum("registration");
+		RegistrationPolicy registrationPolicy = this.enableMBeanExport.getEnum("registration");
 		exporter.setRegistrationPolicy(registrationPolicy);
 	}
 
 
-	private static enum SpecificPlatform {
+	public static enum SpecificPlatform {
 
 		WEBLOGIC("weblogic.management.Helper") {
 			@Override
-			public FactoryBean<?> getMBeanServerFactory() {
-				JndiObjectFactoryBean factory = new JndiObjectFactoryBean();
-				factory.setJndiName("java:comp/env/jmx/runtime");
-				return factory;
+			public MBeanServer getMBeanServer() {
+				try {
+					return new JndiLocatorDelegate().lookup("java:comp/env/jmx/runtime", MBeanServer.class);
+				}
+				catch (NamingException ex) {
+					throw new MBeanServerNotFoundException("Failed to retrieve WebLogic MBeanServer from JNDI", ex);
+				}
 			}
 		},
 
 		WEBSPHERE("com.ibm.websphere.management.AdminServiceFactory") {
 			@Override
-			public FactoryBean<MBeanServer> getMBeanServerFactory() {
-				return new WebSphereMBeanServerFactoryBean();
+			public MBeanServer getMBeanServer() {
+				WebSphereMBeanServerFactoryBean fb = new WebSphereMBeanServerFactoryBean();
+				fb.afterPropertiesSet();
+				return fb.getObject();
 			}
 		};
 
@@ -143,19 +150,7 @@ public class MBeanExportConfiguration implements ImportAware, EnvironmentAware, 
 			this.identifyingClass = identifyingClass;
 		}
 
-		public MBeanServer getMBeanServer() {
-			Object server;
-			try {
-				server = getMBeanServerFactory().getObject();
-				Assert.isInstanceOf(MBeanServer.class, server);
-				return (MBeanServer) server;
-			}
-			catch (Exception ex) {
-				throw new IllegalStateException(ex);
-			}
-		}
-
-		protected abstract FactoryBean<?> getMBeanServerFactory();
+		public abstract MBeanServer getMBeanServer();
 
 		public static SpecificPlatform get() {
 			ClassLoader classLoader = MBeanExportConfiguration.class.getClassLoader();
